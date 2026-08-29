@@ -1,0 +1,7 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="icon/calendar">
+<path id="Vector" d="M41 10H11C8.79086 10 7 11.7909 7 14V41C7 43.2091 8.79086 45 11 45H41C43.2091 45 45 43.2091 45 41V14C45 11.7909 43.2091 10 41 10Z" stroke="#24211D" stroke-width="2.5"/>
+<path id="Vector_2" d="M16 6V15M36 6V15M7 20H45" stroke="#24211D" stroke-width="2.5" stroke-linecap="round"/>
+<path id="Vector_3" d="M15 27H17M25 27H27M35 27H37M15 35H17M25 35H27M35 35H37" stroke="#24211D" stroke-width="3" stroke-linecap="round"/>
+</g>
+</svg>
