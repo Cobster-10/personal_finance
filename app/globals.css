@@ -166,6 +166,26 @@ select:focus-visible {
   line-height: 1.45;
 }
 
+.sign-out-button {
+  border: 2px solid var(--ink);
+  border-radius: 8px 11px 7px 10px;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.sign-out-button:hover {
+  background: var(--coral-soft);
+}
+
+.sign-out-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .finance-app {
   position: relative;
   min-height: 100vh;
@@ -274,6 +294,13 @@ select:focus-visible {
   align-items: center;
   justify-self: end;
   gap: 10px;
+}
+
+.account-controls {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 12px;
 }
 
 .month-control > img {
@@ -832,7 +859,7 @@ select:focus-visible {
     grid-row: 1;
   }
 
-  .month-control {
+  .account-controls {
     grid-column: 3;
     grid-row: 1;
   }
@@ -864,6 +891,15 @@ select:focus-visible {
 
   .month-control > img {
     display: none;
+  }
+
+  .account-controls {
+    gap: 7px;
+  }
+
+  .sign-out-button {
+    padding-inline: 8px;
+    font-size: 11px;
   }
 
   .month-select-shell select {

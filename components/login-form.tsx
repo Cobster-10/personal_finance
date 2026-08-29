@@ -4,12 +4,16 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export function LoginForm() {
+function safeNextPath(nextPath?: string) {
+  return nextPath?.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/";
+}
+
+export function LoginForm({ nextPath, initialMessage }: { nextPath?: string; initialMessage?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(initialMessage ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -20,7 +24,11 @@ export function LoginForm() {
     const supabase = createClient();
     const result = mode === "login"
       ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password });
+      : await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
 
     if (result.error) {
       setMessage(result.error.message);
@@ -35,7 +43,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/");
+    router.push(safeNextPath(nextPath));
     router.refresh();
   }
 
@@ -56,7 +64,7 @@ export function LoginForm() {
       <input
         autoComplete={mode === "login" ? "current-password" : "new-password"}
         id="password"
-        minLength={6}
+        minLength={8}
         name="password"
         onChange={(event) => setPassword(event.target.value)}
         required
@@ -78,6 +86,28 @@ export function LoginForm() {
       >
         {mode === "login" ? "Need an account? Sign up" : "Already have an account? Sign in"}
       </button>
+
+      {mode === "login" ? (
+        <button
+          className="auth-mode-toggle"
+          onClick={async () => {
+            setMessage(null);
+            if (!email) {
+              setMessage("Enter your email address first, then request a reset link.");
+              return;
+            }
+            setIsSubmitting(true);
+            const { error } = await createClient().auth.resetPasswordForEmail(email, {
+              redirectTo: `${window.location.origin}/auth/callback?next=/auth/update-password`,
+            });
+            setMessage(error ? error.message : "Check your email for a password reset link.");
+            setIsSubmitting(false);
+          }}
+          type="button"
+        >
+          Forgot password?
+        </button>
+      ) : null}
 
       {message ? <p className="auth-message" role="status">{message}</p> : null}
     </form>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { CandyJarViewer } from "@/components/candy-jar-viewer";
 import { ReceiptStackMeter } from "@/components/receipt-stack-meter";
 import type { DashboardData, DashboardExpense } from "@/lib/finance/dashboard-data";
+import { SignOutButton } from "@/components/sign-out-button";
 
 type NavItem = {
   label: string;
@@ -82,12 +83,6 @@ export function FinanceDashboard({ initialData }: { initialData: DashboardData }
   const [totalBudget, setTotalBudget] = useState(initialData.totalBudget);
   const [currentSpent, setCurrentSpent] = useState(initialData.currentSpent);
 
-  useEffect(() => {
-    setMonth(initialData.month);
-    setTotalBudget(initialData.totalBudget);
-    setCurrentSpent(initialData.currentSpent);
-  }, [initialData.month, initialData.totalBudget, initialData.currentSpent]);
-
   return (
     <div className="finance-app">
       <header className="topbar">
@@ -112,25 +107,28 @@ export function FinanceDashboard({ initialData }: { initialData: DashboardData }
           ))}
         </nav>
 
-        <label className="month-control">
-          <Image src="/assets/calendar.svg" alt="" width={26} height={26} />
-          <span className="sr-only">Dashboard month</span>
-          <span className="month-select-shell">
-            <select
-              value={month}
-              onChange={(event) => {
-                const value = event.target.value;
-                setMonth(value);
-                router.push(`/?month=${value}`);
-              }}
-            >
-              {initialData.months.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            <Image className="select-chevron" src="/assets/chevron.svg" alt="" width={17} height={17} />
-          </span>
-        </label>
+        <div className="account-controls">
+          <label className="month-control">
+            <Image src="/assets/calendar.svg" alt="" width={26} height={26} />
+            <span className="sr-only">Dashboard month</span>
+            <span className="month-select-shell">
+              <select
+                value={month}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setMonth(value);
+                  router.push(`/?month=${value}`);
+                }}
+              >
+                {initialData.months.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <Image className="select-chevron" src="/assets/chevron.svg" alt="" width={17} height={17} />
+            </span>
+          </label>
+          <SignOutButton />
+        </div>
       </header>
 
       <main className="dashboard" id="snapshot">
