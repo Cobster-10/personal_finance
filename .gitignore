@@ -4,6 +4,13 @@
 # Next.js build output
 /.next
 /out
+.vercel
+
+# Test coverage
+coverage
+
+# Supabase local runtime files
+supabase/.temp
 
 # local tooling
 *.tsbuildinfo

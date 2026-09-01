@@ -17,6 +17,7 @@ export type Database = {
       accounts: {
         Row: {
           account_type: string
+          account_mask: string | null
           created_at: string
           currency_code: string
           current_balance_cents: number
@@ -24,11 +25,14 @@ export type Database = {
           institution_name: string | null
           is_archived: boolean
           name: string
+          plaid_account_id: string | null
+          plaid_item_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           account_type: string
+          account_mask?: string | null
           created_at?: string
           currency_code?: string
           current_balance_cents?: number
@@ -36,11 +40,14 @@ export type Database = {
           institution_name?: string | null
           is_archived?: boolean
           name: string
+          plaid_account_id?: string | null
+          plaid_item_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           account_type?: string
+          account_mask?: string | null
           created_at?: string
           currency_code?: string
           current_balance_cents?: number
@@ -48,6 +55,8 @@ export type Database = {
           institution_name?: string | null
           is_archived?: boolean
           name?: string
+          plaid_account_id?: string | null
+          plaid_item_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -98,6 +107,48 @@ export type Database = {
           },
         ]
       }
+      plaid_items: {
+        Row: {
+          access_token_ciphertext: string
+          access_token_key_version: string
+          created_at: string
+          id: string
+          institution_name: string | null
+          plaid_institution_id: string | null
+          plaid_item_id: string
+          status: string
+          sync_cursor: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token_ciphertext: string
+          access_token_key_version?: string
+          created_at?: string
+          id?: string
+          institution_name?: string | null
+          plaid_institution_id?: string | null
+          plaid_item_id: string
+          status?: string
+          sync_cursor?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token_ciphertext?: string
+          access_token_key_version?: string
+          created_at?: string
+          id?: string
+          institution_name?: string | null
+          plaid_institution_id?: string | null
+          plaid_item_id?: string
+          status?: string
+          sync_cursor?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       budgets: {
         Row: {
           created_at: string
@@ -133,6 +184,7 @@ export type Database = {
           icon: string | null
           id: string
           name: string
+          purpose: string
           updated_at: string
           user_id: string
         }
@@ -143,6 +195,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name: string
+          purpose?: string
           updated_at?: string
           user_id: string
         }
@@ -153,6 +206,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name?: string
+          purpose?: string
           updated_at?: string
           user_id?: string
         }
@@ -193,6 +247,9 @@ export type Database = {
           id: string
           import_hash: string | null
           merchant_name: string | null
+          plaid_pending_transaction_id: string | null
+          plaid_transaction_id: string | null
+          currency_code: string | null
           notes: string | null
           source: string
           status: string
@@ -210,6 +267,9 @@ export type Database = {
           id?: string
           import_hash?: string | null
           merchant_name?: string | null
+          plaid_pending_transaction_id?: string | null
+          plaid_transaction_id?: string | null
+          currency_code?: string | null
           notes?: string | null
           source?: string
           status?: string
@@ -227,6 +287,9 @@ export type Database = {
           id?: string
           import_hash?: string | null
           merchant_name?: string | null
+          plaid_pending_transaction_id?: string | null
+          plaid_transaction_id?: string | null
+          currency_code?: string | null
           notes?: string | null
           source?: string
           status?: string
@@ -389,4 +452,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
