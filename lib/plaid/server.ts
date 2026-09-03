@@ -4,12 +4,20 @@ import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
 
 let plaidClient: PlaidApi | undefined;
 
+export function getPlaidEnvironment() {
+  const environment = process.env.PLAID_ENV ?? "sandbox";
+  if (environment !== "sandbox" && environment !== "production") {
+    throw new Error("PLAID_ENV must be either sandbox or production.");
+  }
+  return environment;
+}
+
 export function getPlaidClient() {
   if (plaidClient) return plaidClient;
 
   const clientId = process.env.PLAID_CLIENT_ID;
   const secret = process.env.PLAID_SECRET;
-  const environment = process.env.PLAID_ENV ?? "sandbox";
+  const environment = getPlaidEnvironment();
   const basePath = PlaidEnvironments[environment as keyof typeof PlaidEnvironments];
 
   if (!clientId || !secret || !basePath) {

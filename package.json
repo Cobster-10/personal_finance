@@ -13,6 +13,7 @@
     "@fontsource/gloria-hallelujah": "latest",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
+    "jose": "^6.2.10",
     "next": "latest",
     "plaid": "^46.0.0",
     "react": "latest",

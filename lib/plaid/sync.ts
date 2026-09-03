@@ -2,17 +2,20 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptPlaidAccessToken } from "@/lib/plaid/crypto";
-import { getPlaidClient } from "@/lib/plaid/server";
+import { getPlaidClient, getPlaidEnvironment } from "@/lib/plaid/server";
 
 export async function syncPlaidItem(userId: string, plaidItemRowId: string) {
   const admin = createAdminClient();
   const { data: item, error: itemError } = await admin
     .from("plaid_items")
-    .select("id, access_token_ciphertext, sync_cursor")
+    .select("id, access_token_ciphertext, sync_cursor, plaid_environment")
     .eq("id", plaidItemRowId)
     .eq("user_id", userId)
     .single();
   if (itemError || !item) throw itemError ?? new Error("Plaid Item was not found.");
+  if (item.plaid_environment !== getPlaidEnvironment()) {
+    throw new Error("Plaid Item environment does not match the configured environment.");
+  }
 
   const { data: accountRows, error: accountError } = await admin
     .from("accounts")

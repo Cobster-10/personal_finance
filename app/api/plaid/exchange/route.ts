@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { encryptPlaidAccessToken } from "@/lib/plaid/crypto";
-import { getPlaidClient, plaidErrorMessage } from "@/lib/plaid/server";
+import { getPlaidClient, getPlaidEnvironment, plaidErrorMessage } from "@/lib/plaid/server";
 import { syncPlaidItem } from "@/lib/plaid/sync";
 
 export const runtime = "nodejs";
@@ -39,6 +39,7 @@ export async function POST(request: Request) {
       institution_name: itemData.item.institution_name ?? (typeof body.institution_name === "string" ? body.institution_name.slice(0, 120) : null),
       access_token_ciphertext: encryptPlaidAccessToken(exchanged.access_token),
       access_token_key_version: "v1",
+      plaid_environment: getPlaidEnvironment(),
       status: "healthy",
     }, { onConflict: "user_id,plaid_item_id" }).select("id").single();
     if (itemError || !plaidItem) throw itemError ?? new Error("Could not store Plaid Item.");

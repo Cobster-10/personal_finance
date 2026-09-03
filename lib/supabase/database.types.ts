@@ -115,6 +115,7 @@ export type Database = {
           id: string
           institution_name: string | null
           plaid_institution_id: string | null
+          plaid_environment: string
           plaid_item_id: string
           status: string
           sync_cursor: string | null
@@ -128,6 +129,7 @@ export type Database = {
           id?: string
           institution_name?: string | null
           plaid_institution_id?: string | null
+          plaid_environment?: string
           plaid_item_id: string
           status?: string
           sync_cursor?: string | null
@@ -141,6 +143,7 @@ export type Database = {
           id?: string
           institution_name?: string | null
           plaid_institution_id?: string | null
+          plaid_environment?: string
           plaid_item_id?: string
           status?: string
           sync_cursor?: string | null

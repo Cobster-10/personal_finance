@@ -4,6 +4,11 @@ import type { Database } from "@/lib/supabase/database.types";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+  const isPlaidWebhook = request.nextUrl.pathname === "/api/plaid/webhook";
+
+  // Plaid cannot send a Supabase session cookie. The route performs its own
+  // Plaid-Verification signature check before processing anything.
+  if (isPlaidWebhook) return supabaseResponse;
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
     return supabaseResponse;
