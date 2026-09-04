@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CandyJarViewer } from "@/components/candy-jar-viewer";
 import { ReceiptStackMeter } from "@/components/receipt-stack-meter";
@@ -9,15 +10,19 @@ import { CategoryPlanner } from "@/components/category-planner";
 import type { DashboardData, DashboardExpense } from "@/lib/finance/dashboard-data";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ConnectAccountButton } from "@/components/connect-account-button";
+import { createClient } from "@/lib/supabase/client";
+
+type DashboardTab = "Snapshot" | "Transactions" | "Categories" | "Settings";
 
 type NavItem = {
-  label: string;
+  label: DashboardTab;
   icon: string;
+  href?: string;
 };
 
 const navItems: NavItem[] = [
   { label: "Snapshot", icon: "/assets/nav-snapshot.svg" },
-  { label: "Transactions", icon: "/assets/nav-transactions.svg" },
+  { label: "Transactions", icon: "/assets/nav-transactions.svg", href: "/transactions" },
   { label: "Categories", icon: "/assets/nav-categories.svg" },
   { label: "Settings", icon: "/assets/nav-settings.svg" },
 ];
@@ -30,6 +35,11 @@ function formatMoney(value: number, currencyCode: string) {
   }).format(value);
 }
 
+function parseEditableAmount(value: string) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed * 100) / 100) : 0;
+}
+
 function ExpenseMeter({
   category,
   spent,
@@ -37,7 +47,8 @@ function ExpenseMeter({
   currencyCode,
   onOpen,
 }: DashboardExpense & { currencyCode: string; onOpen: () => void }) {
-  const percentage = budget > 0 ? Math.min(Math.round((spent / budget) * 100), 100) : 0;
+  const hasBudget = budget > 0;
+  const percentage = hasBudget ? Math.min(Math.round((spent / budget) * 100), 100) : 100;
 
   return (
     <button
@@ -50,7 +61,7 @@ function ExpenseMeter({
       <div className="expense-meter" aria-hidden="true">
         <div className="expense-fill" style={{ height: `${percentage}%` }} />
         <div className="expense-outline" />
-        <span className="expense-progress">{percentage}% used</span>
+        <span className="expense-progress">{hasBudget ? `${percentage}% used` : "No budget"}</span>
       </div>
       <div className="expense-stats">
         <div>
@@ -210,13 +221,51 @@ function IncomeBottle({ expectedIncome, depositedIncome }: Pick<DashboardData, "
   );
 }
 
-export function FinanceDashboard({ initialData }: { initialData: DashboardData }) {
+export function FinanceDashboard({
+  initialData,
+  initialTab = "Snapshot",
+}: {
+  initialData: DashboardData;
+  initialTab?: "Snapshot" | "Categories" | "Settings";
+}) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("Snapshot");
+  const [activeTab, setActiveTab] = useState<DashboardTab>(initialTab);
   const [month, setMonth] = useState(initialData.month);
+  const [expectedIncome, setExpectedIncome] = useState(initialData.expectedIncome);
   const [totalBudget, setTotalBudget] = useState(initialData.totalBudget);
   const [currentSpent, setCurrentSpent] = useState(initialData.currentSpent);
   const [selectedExpense, setSelectedExpense] = useState<DashboardExpense | null>(null);
+  const [planningSaveError, setPlanningSaveError] = useState<string | null>(null);
+
+  async function savePlanningOverride(field: "expected_income_cents" | "total_budget_override_cents", value: number) {
+    setPlanningSaveError(null);
+    const supabase = createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      setPlanningSaveError("Your session has expired. Please sign in again.");
+      return;
+    }
+
+    const override = field === "expected_income_cents"
+      ? { expected_income_cents: Math.round(value * 100) }
+      : { total_budget_override_cents: Math.round(value * 100) };
+    const result = initialData.monthlyBudgetId
+      ? await supabase
+          .from("budgets")
+          .update(override)
+          .eq("id", initialData.monthlyBudgetId)
+          .eq("user_id", user.id)
+      : await supabase
+          .from("budgets")
+          .upsert({
+            user_id: user.id,
+            month: initialData.month,
+            total_budget_cents: Math.round(initialData.categoryBudgetTotal * 100),
+            ...override,
+          }, { onConflict: "user_id,month" });
+
+    if (result.error) setPlanningSaveError("Could not save this planning value.");
+  }
 
   return (
     <div className="finance-app">
@@ -228,15 +277,26 @@ export function FinanceDashboard({ initialData }: { initialData: DashboardData }
         <nav className="sketch-nav" aria-label="Primary navigation">
           {navItems.map((item, index) => (
             <div className="nav-slot" key={item.label}>
-              <button
-                className={`nav-button ${activeTab === item.label ? "is-active" : ""}`}
-                type="button"
-                aria-current={activeTab === item.label ? "page" : undefined}
-                onClick={() => setActiveTab(item.label)}
-              >
-                <Image src={item.icon} alt="" width={24} height={24} />
-                <span>{item.label}</span>
-              </button>
+              {item.href ? (
+                <Link
+                  className={`nav-button ${activeTab === item.label ? "is-active" : ""}`}
+                  href={item.href}
+                  aria-current={activeTab === item.label ? "page" : undefined}
+                >
+                  <Image src={item.icon} alt="" width={24} height={24} />
+                  <span>{item.label}</span>
+                </Link>
+              ) : (
+                <button
+                  className={`nav-button ${activeTab === item.label ? "is-active" : ""}`}
+                  type="button"
+                  aria-current={activeTab === item.label ? "page" : undefined}
+                  onClick={() => setActiveTab(item.label)}
+                >
+                  <Image src={item.icon} alt="" width={24} height={24} />
+                  <span>{item.label}</span>
+                </button>
+              )}
               {index < navItems.length - 1 ? <span className="nav-separator" aria-hidden="true" /> : null}
             </div>
           ))}
@@ -281,7 +341,19 @@ export function FinanceDashboard({ initialData }: { initialData: DashboardData }
           <h1 className="sr-only" id="income-heading">Income snapshot for {initialData.monthLabel}</h1>
 
           <div className="income-stat income-expected">
-            <strong>{formatMoney(initialData.expectedIncome, initialData.currencyCode)}</strong>
+            <label className="income-amount-input">
+              <span className="sr-only">Expected income for {initialData.monthLabel}</span>
+              <span aria-hidden="true">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                value={expectedIncome}
+                onChange={(event) => setExpectedIncome(parseEditableAmount(event.target.value))}
+                onBlur={() => void savePlanningOverride("expected_income_cents", expectedIncome)}
+              />
+            </label>
             <span>expected</span>
           </div>
           <span className="income-dash income-dash-expected" aria-hidden="true" />
@@ -292,16 +364,30 @@ export function FinanceDashboard({ initialData }: { initialData: DashboardData }
           </div>
           <span className="income-dash income-dash-deposited" aria-hidden="true" />
 
-          <IncomeBottle expectedIncome={initialData.expectedIncome} depositedIncome={initialData.depositedIncome} />
+          <IncomeBottle expectedIncome={expectedIncome} depositedIncome={initialData.depositedIncome} />
 
           <div className="recent-income">
-            <div className="transaction-row">
-              <Image src="/assets/transaction-check.svg" alt="" width={23} height={23} />
-              <div>
-                <p>{initialData.recentIncome ? `${initialData.recentIncome.date} · ${initialData.recentIncome.description}` : "No income recorded"}</p>
-                <strong>{initialData.recentIncome ? `+${formatMoney(initialData.recentIncome.amount, initialData.currencyCode)}` : formatMoney(0, initialData.currencyCode)}</strong>
+            {initialData.incomeTransactions.length > 0 ? (
+              <div className="recent-income-list">
+                {initialData.incomeTransactions.map((income, index) => (
+                  <div className="transaction-row" key={`${income.date}-${income.description}-${index}`}>
+                    <Image src="/assets/transaction-check.svg" alt="" width={23} height={23} />
+                    <div>
+                      <p>{income.date} · {income.description}</p>
+                      <strong>+{formatMoney(income.amount, initialData.currencyCode)}</strong>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            ) : (
+              <div className="transaction-row">
+                <Image src="/assets/transaction-check.svg" alt="" width={23} height={23} />
+                <div>
+                  <p>No income recorded</p>
+                  <strong>{formatMoney(0, initialData.currencyCode)}</strong>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
@@ -312,6 +398,7 @@ export function FinanceDashboard({ initialData }: { initialData: DashboardData }
             currentSpent={currentSpent}
             onTotalBudgetChange={setTotalBudget}
             onCurrentSpentChange={setCurrentSpent}
+            onTotalBudgetBlur={() => void savePlanningOverride("total_budget_override_cents", totalBudget)}
           />
 
           <div className="expense-grid">
@@ -339,7 +426,7 @@ export function FinanceDashboard({ initialData }: { initialData: DashboardData }
           onClose={() => setSelectedExpense(null)}
           onViewTransactions={() => {
             setSelectedExpense(null);
-            setActiveTab("Transactions");
+            router.push("/transactions");
           }}
         />
       ) : null}
@@ -347,6 +434,7 @@ export function FinanceDashboard({ initialData }: { initialData: DashboardData }
       <p className="view-status" aria-live="polite">
         {activeTab} · {initialData.monthLabel}
       </p>
+      {planningSaveError ? <p className="dashboard-save-error" role="alert">{planningSaveError}</p> : null}
     </div>
   );
 }

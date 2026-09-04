@@ -1,27 +1,35 @@
-# Project overview
+# Project context
 
-Sketch Finance is a web-based personal finance app. Its initial product scope is to track income across accounts and time periods, track expenses across time periods, and categorize expenses.
+Sketch Finance is a Next.js 16 App Router personal-finance app using React, TypeScript, custom CSS, Rough.js, Gloria Hallelujah, and an Excalidraw-like scratch-paper visual style. It has:
 
-The app uses Next.js, React, TypeScript, and custom CSS, with Rough.js for the hand-drawn SVG details and Gloria Hallelujah for the handwritten typography. The visual direction is an Excalidraw-like scratch-paper interface with imperfect outlines, hachure fills, and restrained coral, green, and ink colors. The product is transitioning from a frontend prototype to a Supabase-backed application.
+- An authenticated Snapshot dashboard with a month selector, income jar, receipt spending meter, and expense-category cards.
+- `/transactions`, a chronological ledger of synced/manual transactions with masked account identifiers and category assignment.
+- A Categories planner at `/?tab=categories`.
+- A Settings tab that is present but not implemented.
 
-The first dashboard screen from the Figma design is implemented. It currently includes:
+## Data and Supabase
 
-- A responsive navigation bar and month selector.
-- An embedded Sketchfab jellyfish-in-a-bottle model for the income visualization.
-- An interactive receipt-stack spending meter. Budget and spending values are editable frontend state; changing them updates the percentage, stack height, and generated receipt count.
-- Percentage-driven expense category meters built as real React/CSS components rather than pasted Figma images.
+The app uses Supabase project `mjzzkicesrokapzgnxjs` through SSR browser/server clients in `lib/supabase/`. Configuration is documented in `.env.example`. Public tables use RLS and user-ownership checks. Never expose Supabase secret/service-role keys, Plaid secrets, encrypted access tokens, or other server-only values to the browser.
 
-The Supabase integration foundation is now prepared locally: `@supabase/ssr` and `@supabase/supabase-js` are installed, browser/server clients live in `lib/supabase/`, and `.env.example` documents the required project URL and publishable key. The Supabase MCP is authenticated in Codex, but no Supabase project has been created or selected yet. The initial schema/RLS migration is in `supabase/migrations/20260828000000_initial_schema.sql`, but it has not been applied. Values are still mock frontend data. Keep UI components data-driven so real financial data can replace the mock state later without redesigning the presentation layer.
+Migrations in `supabase/migrations/` cover profiles, accounts, categories, transactions, budgets, Plaid connections, environment isolation, category-type enforcement, and monthly planning overrides. `transactions.category_id` links transactions to `categories`; a database trigger enforces negative transactions → expense categories and positive transactions → income categories. The monthly budget defaults to the sum of expense-category budgets, while nullable overrides persist manually edited expected income and overall budget values.
 
-## Product roadmap
+## Plaid integration
 
-1. Select or create a Supabase development project, populate `.env.local`, and apply the initial migration.
-2. Generate database types and replace hardcoded dashboard values with authenticated Supabase data.
-3. Add transaction, account, category, and monthly budget management screens.
-4. Add CSV transaction importing and duplicate protection.
-5. Add bank syncing only after the manual-data flow is reliable; never connect MCP or test integrations to production financial data.
+Plaid Link tokens are created server-side for US checking and credit-card accounts with the Transactions product. After Link returns a public token, `/api/plaid/exchange` exchanges it server-side, filters eligible accounts, encrypts and stores the access token in `plaid_items`, stores only masked account metadata, and runs an initial `/transactions/sync`.
 
-Before handing off frontend changes, run `npm run typecheck`, `npm run lint`, and `npm run build`. For interaction or layout changes, also verify the page in a browser.
+`lib/plaid/sync.ts` stores selected fields: account mapping, signed amount in cents, date, merchant, original description, pending/cleared status, Plaid transaction IDs, source, and currency. It preserves the cursor, upserts added/modified rows, and deletes removed rows. `/api/plaid/webhook` verifies Plaid webhook signatures and triggers incremental syncs; item reauthentication/error statuses are recorded. Access tokens are long-lived, but a bank may require reauthentication. Plaid updates are asynchronous rather than real-time, so the page must reload to show newly stored data. Sandbox and Production items must remain separate; `PLAID_ENV` is enforced.
+
+## Development rules
+
+Keep financial data server-side and rely on RLS for user isolation. Keep UI components data-driven and use `next/link` for navigation. Before handoff run:
+
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`
+
+Also browser-verify UI and interaction changes.
+
+Known follow-ups: add Plaid Link update-mode “Reconnect account” UI for `login_required` items, enable Supabase leaked-password protection, and decide whether to add manual/on-demand transaction refresh.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

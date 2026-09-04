@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
+export default async function Home({ searchParams }: { searchParams: Promise<{ month?: string; tab?: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -13,8 +13,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
     redirect("/login");
   }
 
-  const { month } = await searchParams;
+  const { month, tab } = await searchParams;
   const dashboardData = await getDashboardData(month);
+  const initialTab = tab === "categories" ? "Categories" as const : "Snapshot" as const;
 
-  return <FinanceDashboard key={dashboardData.month} initialData={dashboardData} />;
+  return <FinanceDashboard key={`${dashboardData.month}-${initialTab}`} initialData={dashboardData} initialTab={initialTab} />;
 }

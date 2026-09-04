@@ -15,6 +15,12 @@ export type DashboardExpenseTransaction = {
   amount: number;
 };
 
+export type DashboardIncome = {
+  date: string;
+  description: string;
+  amount: number;
+};
+
 export type DashboardCategory = {
   id: string;
   name: string;
@@ -35,11 +41,15 @@ export type DashboardData = {
   months: { value: string; label: string }[];
   expectedIncome: number;
   depositedIncome: number;
+  expectedIncomeOverride: number | null;
   currentSpent: number;
   totalBudget: number;
+  totalBudgetOverride: number | null;
+  categoryBudgetTotal: number;
+  monthlyBudgetId: string | null;
   expenses: DashboardExpense[];
   categories: DashboardCategory[];
-  recentIncome: { date: string; description: string; amount: number } | null;
+  incomeTransactions: DashboardIncome[];
   dataSource: "demo" | "supabase";
 };
 
@@ -89,11 +99,15 @@ function demoData(month: string): DashboardData {
     months: monthOptions(month),
     expectedIncome: 9000,
     depositedIncome: 750,
+    expectedIncomeOverride: 9000,
     currentSpent: 2480,
     totalBudget: 3000,
+    totalBudgetOverride: null,
+    categoryBudgetTotal: 3000,
+    monthlyBudgetId: null,
     expenses: DEMO_EXPENSES,
     categories: [],
-    recentIncome: { date: demoIncomeDate, description: "Paycheck deposit", amount: 750 },
+    incomeTransactions: [{ date: demoIncomeDate, description: "Paycheck deposit", amount: 750 }],
     dataSource: "demo",
   };
 }
@@ -106,11 +120,15 @@ function emptyLiveData(month: string, currencyCode = "USD"): DashboardData {
     months: monthOptions(month),
     expectedIncome: 0,
     depositedIncome: 0,
+    expectedIncomeOverride: null,
     currentSpent: 0,
     totalBudget: 0,
+    totalBudgetOverride: null,
+    categoryBudgetTotal: 0,
+    monthlyBudgetId: null,
     expenses: [],
     categories: [],
-    recentIncome: null,
+    incomeTransactions: [],
     dataSource: "supabase",
   };
 }
@@ -148,7 +166,12 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
         .gte("transaction_date", month)
         .lt("transaction_date", monthEnd)
         .order("transaction_date", { ascending: false }),
-      supabase.from("budgets").select("id, total_budget_cents").eq("user_id", claimsData.claims.sub).eq("month", month).maybeSingle(),
+      supabase
+        .from("budgets")
+        .select("id, total_budget_cents, expected_income_cents, total_budget_override_cents")
+        .eq("user_id", claimsData.claims.sub)
+        .eq("month", month)
+        .maybeSingle(),
       supabase.from("profiles").select("currency_code").eq("id", claimsData.claims.sub).maybeSingle(),
       supabase
         .from("categories")
@@ -207,15 +230,18 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
       transactionsByCategory.set(categoryId, categoryTransactions);
     }
 
-    const expenses = Array.from(new Set([...spentByCategory.keys(), ...categoryBudgets.keys()]))
-      .filter((categoryId) => (categoryRows ?? []).some((category) => category.id === categoryId && category.category_type === "expense"))
-      .map((categoryId) => ({
-        category: categoryNames.get(categoryId) ?? "Uncategorized",
-        spent: spentByCategory.get(categoryId) ?? 0,
-        budget: categoryBudgets.get(categoryId) ?? 0,
-        transactions: transactionsByCategory.get(categoryId) ?? [],
+    const expenseCategories = (categoryRows ?? []).filter((category) => category.category_type === "expense");
+    const categoryBudgetTotal = expenseCategories.reduce(
+      (total, category) => total + (categoryBudgets.get(category.id) ?? 0),
+      0,
+    );
+    const expenses = expenseCategories
+      .map((category) => ({
+        category: category.name,
+        spent: spentByCategory.get(category.id) ?? 0,
+        budget: categoryBudgets.get(category.id) ?? 0,
+        transactions: transactionsByCategory.get(category.id) ?? [],
       }))
-      .filter((expense) => expense.spent > 0 || expense.budget > 0)
       .sort((a, b) => b.spent - a.spent);
 
     const categories = (categoryRows ?? [])
@@ -233,32 +259,36 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    const incomeTransactions = (transactions ?? []).filter((transaction) => transaction.amount_cents > 0);
-    const depositedTransactions = incomeTransactions.filter((transaction) => transaction.status === "cleared");
-    const recentIncome = incomeTransactions[0];
+    const incomeRows = (transactions ?? []).filter((transaction) => transaction.amount_cents > 0);
+    const incomeTransactions = incomeRows.map((transaction) => ({
+      date: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(
+        new Date(`${transaction.transaction_date}T00:00:00Z`),
+      ),
+      description: transaction.merchant_name ?? transaction.description ?? "Income",
+      amount: transaction.amount_cents / 100,
+    }));
+    const automaticExpectedIncome = incomeRows.reduce((sum, transaction) => sum + transaction.amount_cents / 100, 0);
 
     return {
       ...emptyLiveData(month, profile?.currency_code ?? "USD"),
       month,
       monthLabel: monthLabel(month),
       months: monthOptions(month),
-      expectedIncome: incomeTransactions.reduce((sum, transaction) => sum + transaction.amount_cents / 100, 0),
-      depositedIncome: depositedTransactions.reduce((sum, transaction) => sum + transaction.amount_cents / 100, 0),
+      expectedIncome: budget?.expected_income_cents != null ? budget.expected_income_cents / 100 : automaticExpectedIncome,
+      depositedIncome: automaticExpectedIncome,
+      expectedIncomeOverride: budget?.expected_income_cents != null ? budget.expected_income_cents / 100 : null,
       currentSpent: (transactions ?? [])
         .filter((transaction) => transaction.amount_cents < 0)
         .reduce((sum, transaction) => sum + Math.abs(transaction.amount_cents) / 100, 0),
-      totalBudget: (budget?.total_budget_cents ?? 0) / 100,
+      totalBudget: budget?.total_budget_override_cents != null
+        ? budget.total_budget_override_cents / 100
+        : categoryBudgetTotal,
+      totalBudgetOverride: budget?.total_budget_override_cents != null ? budget.total_budget_override_cents / 100 : null,
+      categoryBudgetTotal,
+      monthlyBudgetId: budget?.id ?? null,
       expenses,
       categories,
-      recentIncome: recentIncome
-        ? {
-            date: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(
-              new Date(`${recentIncome.transaction_date}T00:00:00Z`),
-            ),
-            description: recentIncome.merchant_name ?? recentIncome.description ?? "Income",
-            amount: recentIncome.amount_cents / 100,
-          }
-        : null,
+      incomeTransactions,
       dataSource: "supabase",
     };
   } catch {

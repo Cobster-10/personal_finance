@@ -8,6 +8,7 @@ type ReceiptStackMeterProps = {
   currentSpent: number;
   onTotalBudgetChange: (value: number) => void;
   onCurrentSpentChange: (value: number) => void;
+  onTotalBudgetBlur?: () => void;
 };
 
 const MAX_RECEIPTS = 16;
@@ -25,6 +26,7 @@ export function ReceiptStackMeter({
   currentSpent,
   onTotalBudgetChange,
   onCurrentSpentChange,
+  onTotalBudgetBlur,
 }: ReceiptStackMeterProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const percentage = useMemo(
@@ -123,6 +125,7 @@ export function ReceiptStackMeter({
             inputMode="numeric"
             value={totalBudget}
             onChange={(event) => onTotalBudgetChange(parseAmount(event.target.value))}
+            onBlur={onTotalBudgetBlur}
           />
         </label>
         <span className="receipt-zero" aria-hidden="true">$0</span>

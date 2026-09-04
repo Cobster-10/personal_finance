@@ -155,24 +155,30 @@ export type Database = {
       budgets: {
         Row: {
           created_at: string
+          expected_income_cents: number | null
           id: string
           month: string
+          total_budget_override_cents: number | null
           total_budget_cents: number
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          expected_income_cents?: number | null
           id?: string
           month: string
+          total_budget_override_cents?: number | null
           total_budget_cents?: number
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          expected_income_cents?: number | null
           id?: string
           month?: string
+          total_budget_override_cents?: number | null
           total_budget_cents?: number
           updated_at?: string
           user_id?: string
