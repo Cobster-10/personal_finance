@@ -15,6 +15,7 @@ export function LoginForm({ nextPath, initialMessage }: { nextPath?: string; ini
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [message, setMessage] = useState<string | null>(initialMessage ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const signupsAllowed = process.env.NEXT_PUBLIC_ALLOW_SIGNUP === "true";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,16 +77,18 @@ export function LoginForm({ nextPath, initialMessage }: { nextPath?: string; ini
         {isSubmitting ? "Working…" : mode === "login" ? "Sign in" : "Create account"}
       </button>
 
-      <button
-        className="auth-mode-toggle"
-        onClick={() => {
-          setMode(mode === "login" ? "signup" : "login");
-          setMessage(null);
-        }}
-        type="button"
-      >
-        {mode === "login" ? "Need an account? Sign up" : "Already have an account? Sign in"}
-      </button>
+      {signupsAllowed ? (
+        <button
+          className="auth-mode-toggle"
+          onClick={() => {
+            setMode(mode === "login" ? "signup" : "login");
+            setMessage(null);
+          }}
+          type="button"
+        >
+          {mode === "login" ? "Need an account? Sign up" : "Already have an account? Sign in"}
+        </button>
+      ) : null}
 
       {mode === "login" ? (
         <button

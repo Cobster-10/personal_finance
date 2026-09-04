@@ -16,8 +16,8 @@ export type Database = {
     Tables: {
       accounts: {
         Row: {
-          account_type: string
           account_mask: string | null
+          account_type: string
           created_at: string
           currency_code: string
           current_balance_cents: number
@@ -31,8 +31,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          account_type: string
           account_mask?: string | null
+          account_type: string
           created_at?: string
           currency_code?: string
           current_balance_cents?: number
@@ -46,8 +46,8 @@ export type Database = {
           user_id: string
         }
         Update: {
-          account_type?: string
           account_mask?: string | null
+          account_type?: string
           created_at?: string
           currency_code?: string
           current_balance_cents?: number
@@ -60,7 +60,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "accounts_plaid_item_id_fkey"
+            columns: ["plaid_item_id"]
+            isOneToOne: false
+            referencedRelation: "plaid_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       budget_categories: {
         Row: {
@@ -107,59 +115,14 @@ export type Database = {
           },
         ]
       }
-      plaid_items: {
-        Row: {
-          access_token_ciphertext: string
-          access_token_key_version: string
-          created_at: string
-          id: string
-          institution_name: string | null
-          plaid_institution_id: string | null
-          plaid_environment: string
-          plaid_item_id: string
-          status: string
-          sync_cursor: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          access_token_ciphertext: string
-          access_token_key_version?: string
-          created_at?: string
-          id?: string
-          institution_name?: string | null
-          plaid_institution_id?: string | null
-          plaid_environment?: string
-          plaid_item_id: string
-          status?: string
-          sync_cursor?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          access_token_ciphertext?: string
-          access_token_key_version?: string
-          created_at?: string
-          id?: string
-          institution_name?: string | null
-          plaid_institution_id?: string | null
-          plaid_environment?: string
-          plaid_item_id?: string
-          status?: string
-          sync_cursor?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       budgets: {
         Row: {
           created_at: string
           expected_income_cents: number | null
           id: string
           month: string
-          total_budget_override_cents: number | null
           total_budget_cents: number
+          total_budget_override_cents: number | null
           updated_at: string
           user_id: string
         }
@@ -168,8 +131,8 @@ export type Database = {
           expected_income_cents?: number | null
           id?: string
           month: string
-          total_budget_override_cents?: number | null
           total_budget_cents?: number
+          total_budget_override_cents?: number | null
           updated_at?: string
           user_id: string
         }
@@ -178,8 +141,8 @@ export type Database = {
           expected_income_cents?: number | null
           id?: string
           month?: string
-          total_budget_override_cents?: number | null
           total_budget_cents?: number
+          total_budget_override_cents?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -221,6 +184,87 @@ export type Database = {
         }
         Relationships: []
       }
+      plaid_items: {
+        Row: {
+          access_token_ciphertext: string
+          access_token_key_version: string
+          created_at: string
+          id: string
+          institution_name: string | null
+          plaid_environment: string
+          plaid_institution_id: string | null
+          plaid_item_id: string
+          status: string
+          sync_cursor: string | null
+          sync_lock_expires_at: string | null
+          sync_lock_token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token_ciphertext: string
+          access_token_key_version?: string
+          created_at?: string
+          id?: string
+          institution_name?: string | null
+          plaid_environment?: string
+          plaid_institution_id?: string | null
+          plaid_item_id: string
+          status?: string
+          sync_cursor?: string | null
+          sync_lock_expires_at?: string | null
+          sync_lock_token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token_ciphertext?: string
+          access_token_key_version?: string
+          created_at?: string
+          id?: string
+          institution_name?: string | null
+          plaid_environment?: string
+          plaid_institution_id?: string | null
+          plaid_item_id?: string
+          status?: string
+          sync_cursor?: string | null
+          sync_lock_expires_at?: string | null
+          sync_lock_token?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      plaid_link_attempts: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          encrypted_link_token: string
+          expires_at: string
+          id: string
+          is_ready: boolean
+          user_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          encrypted_link_token: string
+          expires_at: string
+          id?: string
+          is_ready?: boolean
+          user_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          encrypted_link_token?: string
+          expires_at?: string
+          id?: string
+          is_ready?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -251,15 +295,15 @@ export type Database = {
           amount_cents: number
           category_id: string | null
           created_at: string
+          currency_code: string | null
           description: string | null
           external_id: string | null
           id: string
           import_hash: string | null
           merchant_name: string | null
+          notes: string | null
           plaid_pending_transaction_id: string | null
           plaid_transaction_id: string | null
-          currency_code: string | null
-          notes: string | null
           source: string
           status: string
           transaction_date: string
@@ -271,15 +315,15 @@ export type Database = {
           amount_cents: number
           category_id?: string | null
           created_at?: string
+          currency_code?: string | null
           description?: string | null
           external_id?: string | null
           id?: string
           import_hash?: string | null
           merchant_name?: string | null
+          notes?: string | null
           plaid_pending_transaction_id?: string | null
           plaid_transaction_id?: string | null
-          currency_code?: string | null
-          notes?: string | null
           source?: string
           status?: string
           transaction_date: string
@@ -291,15 +335,15 @@ export type Database = {
           amount_cents?: number
           category_id?: string | null
           created_at?: string
+          currency_code?: string | null
           description?: string | null
           external_id?: string | null
           id?: string
           import_hash?: string | null
           merchant_name?: string | null
+          notes?: string | null
           plaid_pending_transaction_id?: string | null
           plaid_transaction_id?: string | null
-          currency_code?: string | null
-          notes?: string | null
           source?: string
           status?: string
           transaction_date?: string
@@ -328,7 +372,40 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      apply_plaid_item_sync: {
+        Args: {
+          p_item_id: string
+          p_lock_token: string
+          p_next_cursor: string
+          p_removed_transaction_ids: string[]
+          p_transactions: Json
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      claim_plaid_item_sync: {
+        Args: {
+          p_item_id: string
+          p_lease_seconds?: number
+          p_lock_token: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      release_plaid_item_sync: {
+        Args: { p_item_id: string; p_lock_token: string; p_user_id: string }
+        Returns: undefined
+      }
+      reserve_plaid_link_attempt: {
+        Args: {
+          p_expires_at: string
+          p_max_attempts?: number
+          p_max_items?: number
+          p_plaid_environment: string
+          p_user_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
@@ -347,12 +424,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -376,11 +453,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -401,11 +478,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -426,11 +503,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -443,11 +520,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
