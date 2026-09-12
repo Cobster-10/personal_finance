@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { normalizeCategoryPurpose, type CategoryPurpose } from "@/lib/finance/category-data";
+import { isIgnoredCategoryPurpose, normalizeCategoryPurpose, type CategoryPurpose } from "@/lib/finance/category-data";
 
 export type DashboardExpense = {
   category: string;
@@ -203,13 +203,22 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
      * these queries safe if they are reused outside this loader.
      */
     const categoryNames = new Map((categoryRows ?? []).map((category) => [category.id, category.name]));
+    const ignoredCategoryIds = new Set(
+      (categoryRows ?? [])
+        .filter((category) => isIgnoredCategoryPurpose(category.purpose))
+        .map((category) => category.id),
+    );
     const categoryBudgets = new Map((budgetCategories ?? []).map((entry) => [entry.category_id, entry.budget_cents / 100]));
     const spentByCategory = new Map<string, number>();
     const receivedByCategory = new Map<string, number>();
     const transactionsByCategory = new Map<string, DashboardExpenseTransaction[]>();
 
     for (const transaction of transactions ?? []) {
-      if (!transaction.category_id || !categoryNames.has(transaction.category_id)) {
+      if (
+        !transaction.category_id
+        || !categoryNames.has(transaction.category_id)
+        || ignoredCategoryIds.has(transaction.category_id)
+      ) {
         continue;
       }
       const categoryId = transaction.category_id;
@@ -230,7 +239,9 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
       transactionsByCategory.set(categoryId, categoryTransactions);
     }
 
-    const expenseCategories = (categoryRows ?? []).filter((category) => category.category_type === "expense");
+    const expenseCategories = (categoryRows ?? []).filter(
+      (category) => category.category_type === "expense" && !ignoredCategoryIds.has(category.id),
+    );
     const categoryBudgetTotal = expenseCategories.reduce(
       (total, category) => total + (categoryBudgets.get(category.id) ?? 0),
       0,
@@ -245,6 +256,7 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
       .sort((a, b) => b.spent - a.spent);
 
     const categories = (categoryRows ?? [])
+      .filter((category) => !ignoredCategoryIds.has(category.id))
       .map((category) => ({
         id: category.id,
         name: category.name,
@@ -259,7 +271,10 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    const incomeRows = (transactions ?? []).filter((transaction) => transaction.amount_cents > 0);
+    const incomeRows = (transactions ?? []).filter(
+      (transaction) => transaction.amount_cents > 0
+        && (!transaction.category_id || !ignoredCategoryIds.has(transaction.category_id)),
+    );
     const incomeTransactions = incomeRows.map((transaction) => ({
       date: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(
         new Date(`${transaction.transaction_date}T00:00:00Z`),
@@ -278,7 +293,10 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
       depositedIncome: automaticExpectedIncome,
       expectedIncomeOverride: budget?.expected_income_cents != null ? budget.expected_income_cents / 100 : null,
       currentSpent: (transactions ?? [])
-        .filter((transaction) => transaction.amount_cents < 0)
+        .filter(
+          (transaction) => transaction.amount_cents < 0
+            && (!transaction.category_id || !ignoredCategoryIds.has(transaction.category_id)),
+        )
         .reduce((sum, transaction) => sum + Math.abs(transaction.amount_cents) / 100, 0),
       totalBudget: budget?.total_budget_override_cents != null
         ? budget.total_budget_override_cents / 100

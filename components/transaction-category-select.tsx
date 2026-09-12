@@ -9,6 +9,10 @@ type CategoryOption = {
   category_type: string;
 };
 
+function displayCategoryName(name: string) {
+  return name.trim().toLowerCase() === "ignore" ? "Ignore" : name;
+}
+
 export function TransactionCategorySelect({
   transactionId,
   amountCents,
@@ -59,7 +63,7 @@ export function TransactionCategorySelect({
         >
           <option value="">Uncategorized</option>
           {compatibleCategories.map((category) => (
-            <option key={category.id} value={category.id}>{category.name}</option>
+            <option key={category.id} value={category.id}>{displayCategoryName(category.name)}</option>
           ))}
         </select>
       </label>

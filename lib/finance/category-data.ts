@@ -5,10 +5,18 @@ export const CATEGORY_PURPOSES = [
   { value: "give", label: "Give", description: "Charity and gifts", className: "purpose-give" },
 ] as const;
 
-export type CategoryPurpose = (typeof CATEGORY_PURPOSES)[number]["value"];
+export type CategoryPurpose = (typeof CATEGORY_PURPOSES)[number]["value"] | "ignore";
 
 export function normalizeCategoryPurpose(value: unknown): CategoryPurpose {
+  if (value === "ignore") {
+    return "ignore";
+  }
+
   return CATEGORY_PURPOSES.some((purpose) => purpose.value === value)
     ? (value as CategoryPurpose)
     : "spend";
+}
+
+export function isIgnoredCategoryPurpose(value: unknown): boolean {
+  return normalizeCategoryPurpose(value) === "ignore";
 }

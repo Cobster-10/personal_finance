@@ -20,6 +20,33 @@ type NavItem = {
   href?: string;
 };
 
+const snapshotBuckets = [
+  {
+    purpose: "spend",
+    label: "Spend",
+    description: "Everyday spending",
+    className: "snapshot-bucket-spend",
+  },
+  {
+    purpose: "save_grow",
+    label: "Save/Grow",
+    description: "Saving and investing",
+    className: "snapshot-bucket-save-grow",
+  },
+  {
+    purpose: "move",
+    label: "Move",
+    description: "Transfers between accounts",
+    className: "snapshot-bucket-move",
+  },
+  {
+    purpose: "give",
+    label: "Give",
+    description: "Charity and gifts",
+    className: "snapshot-bucket-give",
+  },
+] as const;
+
 const navItems: NavItem[] = [
   { label: "Snapshot", icon: "/assets/nav-snapshot.svg" },
   { label: "Transactions", icon: "/assets/nav-transactions.svg", href: "/transactions" },
@@ -237,6 +264,23 @@ export function FinanceDashboard({
   const [selectedExpense, setSelectedExpense] = useState<DashboardExpense | null>(null);
   const [planningSaveError, setPlanningSaveError] = useState<string | null>(null);
 
+  const categoryByName = new Map(
+    initialData.categories.map((category) => [category.name.trim().toLocaleLowerCase(), category]),
+  );
+  const visibleExpenses = initialData.expenses.filter((expense) => {
+    const normalizedName = expense.category.trim().toLocaleLowerCase();
+    const categoryPurpose = categoryByName.get(normalizedName)?.purpose;
+    return normalizedName !== "ignore" && String(categoryPurpose ?? "") !== "ignore";
+  });
+  const bucketGroups = snapshotBuckets.map((bucket) => ({
+    ...bucket,
+    expenses: visibleExpenses.filter((expense) => {
+      const categoryPurpose = categoryByName.get(expense.category.trim().toLocaleLowerCase())?.purpose;
+      return (categoryPurpose ?? "spend") === bucket.purpose;
+    }),
+  }));
+  const snapshotSpent = visibleExpenses.reduce((total, expense) => total + expense.spent, 0);
+
   async function savePlanningOverride(field: "expected_income_cents" | "total_budget_override_cents", value: number) {
     setPlanningSaveError(null);
     const supabase = createClient();
@@ -393,28 +437,65 @@ export function FinanceDashboard({
 
         <section className="spending-panel" aria-labelledby="spending-heading">
           <h2 className="sr-only" id="spending-heading">Monthly spending</h2>
+          <nav className="snapshot-bucket-overview" aria-label="Monthly money buckets">
+            {bucketGroups.map((bucket) => {
+              const bucketSpent = bucket.expenses.reduce((total, expense) => total + expense.spent, 0);
+              const bucketBudget = bucket.expenses.reduce((total, expense) => total + expense.budget, 0);
+
+              return (
+                <a
+                  className={`snapshot-bucket-card ${bucket.className}`}
+                  href={`#snapshot-bucket-${bucket.purpose}`}
+                  key={bucket.purpose}
+                >
+                  <strong>{bucket.label}</strong>
+                  <span>{bucket.description}</span>
+                  <em>{formatMoney(bucketSpent, initialData.currencyCode)} / {formatMoney(bucketBudget, initialData.currencyCode)}</em>
+                </a>
+              );
+            })}
+          </nav>
+
           <ReceiptStackMeter
             totalBudget={totalBudget}
-            currentSpent={currentSpent}
+            currentSpent={currentSpent === initialData.currentSpent ? snapshotSpent : currentSpent}
             onTotalBudgetChange={setTotalBudget}
             onCurrentSpentChange={setCurrentSpent}
             onTotalBudgetBlur={() => void savePlanningOverride("total_budget_override_cents", totalBudget)}
           />
 
-          <div className="expense-grid">
-            {initialData.expenses.length > 0 ? initialData.expenses.map((expense) => (
-              <ExpenseMeter
-                key={expense.category}
-                {...expense}
-                currencyCode={initialData.currencyCode}
-                onOpen={() => setSelectedExpense(expense)}
-              />
-            )) : (
-              <div className="expense-empty-state">
-                <span className="expense-empty-circle" aria-hidden="true" />
-                <p>No expense categories recorded for this month.</p>
-              </div>
-            )}
+          <div className="snapshot-bucket-sections">
+            {bucketGroups.map((bucket) => (
+              <section
+                className={`snapshot-bucket-section ${bucket.className}`}
+                id={`snapshot-bucket-${bucket.purpose}`}
+                key={bucket.purpose}
+                aria-labelledby={`snapshot-bucket-${bucket.purpose}-heading`}
+              >
+                <header className="snapshot-bucket-heading">
+                  <div>
+                    <h2 id={`snapshot-bucket-${bucket.purpose}-heading`}>{bucket.label}</h2>
+                    <p>{bucket.description}</p>
+                  </div>
+                  <span>{bucket.expenses.length} {bucket.expenses.length === 1 ? "category" : "categories"}</span>
+                </header>
+                <div className="expense-grid">
+                  {bucket.expenses.length > 0 ? bucket.expenses.map((expense) => (
+                    <ExpenseMeter
+                      key={expense.category}
+                      {...expense}
+                      currencyCode={initialData.currencyCode}
+                      onOpen={() => setSelectedExpense(expense)}
+                    />
+                  )) : (
+                    <div className="expense-empty-state">
+                      <span className="expense-empty-circle" aria-hidden="true" />
+                      <p>No categories in this bucket yet.</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            ))}
           </div>
         </section>
       </main> : null}
