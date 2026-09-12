@@ -47,6 +47,8 @@ const snapshotBuckets = [
   },
 ] as const;
 
+type SnapshotBucketPurpose = (typeof snapshotBuckets)[number]["purpose"];
+
 const navItems: NavItem[] = [
   { label: "Snapshot", icon: "/assets/nav-snapshot.svg" },
   { label: "Transactions", icon: "/assets/nav-transactions.svg", href: "/transactions" },
@@ -72,14 +74,15 @@ function ExpenseMeter({
   spent,
   budget,
   currencyCode,
+  tone,
   onOpen,
-}: DashboardExpense & { currencyCode: string; onOpen: () => void }) {
+}: DashboardExpense & { currencyCode: string; tone: SnapshotBucketPurpose; onOpen: () => void }) {
   const hasBudget = budget > 0;
   const percentage = hasBudget ? Math.min(Math.round((spent / budget) * 100), 100) : 100;
 
   return (
     <button
-      className="expense-card"
+      className={`expense-card expense-card-${tone}`}
       type="button"
       aria-label={`Open ${category} spending details`}
       onClick={onOpen}
@@ -485,6 +488,7 @@ export function FinanceDashboard({
                       key={expense.category}
                       {...expense}
                       currencyCode={initialData.currencyCode}
+                      tone={bucket.purpose}
                       onOpen={() => setSelectedExpense(expense)}
                     />
                   )) : (

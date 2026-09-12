@@ -1304,6 +1304,10 @@ select:focus-visible {
 }
 
 .expense-card {
+  --expense-fill-color: var(--expense-soft);
+  --expense-fill-line: rgb(231 111 81 / 72%);
+  --expense-fill-outline: var(--expense);
+
   display: flex;
   min-width: 0;
   height: clamp(188px, 12.24vw, 235px);
@@ -1317,6 +1321,24 @@ select:focus-visible {
   font: inherit;
   text-align: left;
   transition: box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease;
+}
+
+.expense-card-save_grow {
+  --expense-fill-color: #c8e8d4;
+  --expense-fill-line: rgb(51 148 87 / 70%);
+  --expense-fill-outline: var(--green);
+}
+
+.expense-card-move {
+  --expense-fill-color: #c3dcf6;
+  --expense-fill-line: rgb(86 145 202 / 70%);
+  --expense-fill-outline: #5691ca;
+}
+
+.expense-card-give {
+  --expense-fill-color: #e6d2f4;
+  --expense-fill-line: rgb(158 104 191 / 70%);
+  --expense-fill-outline: #9e68bf;
 }
 
 .expense-card:hover {
@@ -1364,11 +1386,11 @@ select:focus-visible {
   bottom: 0;
   left: 0;
   min-height: 3px;
-  background-color: var(--expense-soft);
+  background-color: var(--expense-fill-color);
   background-image: repeating-linear-gradient(
     -10deg,
     transparent 0 6px,
-    rgb(231 111 81 / 72%) 6px 7.5px,
+    var(--expense-fill-line) 6px 7.5px,
     transparent 7.5px 11px
   );
 }
@@ -1388,7 +1410,7 @@ select:focus-visible {
   left: 50%;
   min-width: 67px;
   padding: 3px 6px;
-  border: 1.3px solid var(--expense);
+  border: 1.3px solid var(--expense-fill-outline);
   border-radius: 4px;
   background: var(--paper);
   font-size: clamp(7px, 0.42vw, 8px);
