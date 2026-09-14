@@ -13,7 +13,10 @@ export function isTrustedBrowserOrigin(request: Request) {
 
   let expectedOrigin: string;
   try {
-    expectedOrigin = configuredOrigin ?? new URL(request.url).origin;
+    // Environment-variable values are commonly entered as a full URL with a
+    // trailing slash. Compare URL origins so that harmless URL formatting
+    // differences do not reject same-site browser requests.
+    expectedOrigin = new URL(configuredOrigin ?? request.url).origin;
   } catch {
     return false;
   }
