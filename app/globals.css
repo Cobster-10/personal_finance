@@ -1264,11 +1264,47 @@ select:focus-visible {
   font-size: clamp(10px, 0.69vw, 13px);
 }
 
-.snapshot-bucket-heading > span {
+.snapshot-bucket-heading-meta {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: clamp(10px, 0.95vw, 18px);
+}
+
+.snapshot-bucket-heading-meta > span {
   flex: none;
   color: #384c6c;
   font-family: system-ui, sans-serif;
   font-size: clamp(9px, 0.68vw, 12px);
+}
+
+.give-commitment {
+  display: grid;
+  min-width: min(310px, 33vw);
+  padding: 5px 9px;
+  border: 1px solid rgb(158 104 191 / 48%);
+  border-radius: 5px;
+  background: rgb(255 255 255 / 38%);
+  color: #4c2f65;
+  font-family: system-ui, sans-serif;
+  line-height: 1.15;
+}
+
+.give-commitment > span {
+  font-size: clamp(8px, 0.58vw, 11px);
+}
+
+.give-commitment strong {
+  margin-top: 2px;
+  font-family: "Gloria Hallelujah", cursive;
+  font-size: clamp(11px, 0.85vw, 16px);
+  font-weight: 400;
+}
+
+.give-commitment small {
+  margin-top: 2px;
+  color: #5c5271;
+  font-size: clamp(7px, 0.5vw, 9px);
 }
 
 .snapshot-bucket-section .expense-grid {
@@ -2508,6 +2544,22 @@ select:focus-visible {
 
   .snapshot-bucket-heading h2 {
     font-size: 22px;
+  }
+
+  .snapshot-bucket-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .snapshot-bucket-heading-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .give-commitment {
+    min-width: 0;
+    flex: 1;
   }
 
   .snapshot-bucket-section .expense-grid {

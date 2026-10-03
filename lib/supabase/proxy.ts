@@ -5,10 +5,11 @@ import type { Database } from "@/lib/supabase/database.types";
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
   const isPlaidWebhook = request.nextUrl.pathname === "/api/plaid/webhook";
+  const isAgentApi = request.nextUrl.pathname.startsWith("/api/agent/");
 
-  // Plaid cannot send a Supabase session cookie. The route performs its own
-  // Plaid-Verification signature check before processing anything.
-  if (isPlaidWebhook) return supabaseResponse;
+  // These machine-to-machine endpoints cannot carry a browser session. Each
+  // route has its own credential boundary before it performs any data access.
+  if (isPlaidWebhook || isAgentApi) return supabaseResponse;
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
     return supabaseResponse;

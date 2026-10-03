@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { isIgnoredCategoryPurpose, normalizeCategoryPurpose, type CategoryPurpose } from "@/lib/finance/category-data";
+import { calculateGiveCommitmentCents, toGiveCommitment, type GiveCommitment } from "@/lib/finance/give-commitment";
 
 export type DashboardExpense = {
   category: string;
@@ -50,6 +51,7 @@ export type DashboardData = {
   expenses: DashboardExpense[];
   categories: DashboardCategory[];
   incomeTransactions: DashboardIncome[];
+  giveCommitment: GiveCommitment;
   dataSource: "demo" | "supabase";
 };
 
@@ -108,6 +110,13 @@ function demoData(month: string): DashboardData {
     expenses: DEMO_EXPENSES,
     categories: [],
     incomeTransactions: [{ date: demoIncomeDate, description: "Paycheck deposit", amount: 750 }],
+    giveCommitment: {
+      carryoverFromPriorMonths: 0,
+      monthlyBudget: 0,
+      spent: 0,
+      target: 0,
+      remaining: 0,
+    },
     dataSource: "demo",
   };
 }
@@ -129,6 +138,13 @@ function emptyLiveData(month: string, currencyCode = "USD"): DashboardData {
     expenses: [],
     categories: [],
     incomeTransactions: [],
+    giveCommitment: {
+      carryoverFromPriorMonths: 0,
+      monthlyBudget: 0,
+      spent: 0,
+      target: 0,
+      remaining: 0,
+    },
     dataSource: "supabase",
   };
 }
@@ -158,6 +174,7 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
       { data: budget, error: budgetError },
       { data: profile, error: profileError },
       { data: categoryRows, error: categoriesError },
+      { data: historicalBudgets, error: historicalBudgetsError },
     ] = await Promise.all([
       supabase
         .from("transactions")
@@ -179,10 +196,15 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
         .eq("user_id", claimsData.claims.sub)
         .order("category_type")
         .order("name"),
+      supabase
+        .from("budgets")
+        .select("id, month")
+        .eq("user_id", claimsData.claims.sub)
+        .lte("month", month),
     ]);
 
-    if (transactionsError || budgetError || profileError || categoriesError) {
-      throw transactionsError ?? budgetError ?? profileError ?? categoriesError;
+    if (transactionsError || budgetError || profileError || categoriesError || historicalBudgetsError) {
+      throw transactionsError ?? budgetError ?? profileError ?? categoriesError ?? historicalBudgetsError;
     }
 
     const { data: budgetCategories, error: budgetCategoriesError } = budget?.id
@@ -195,6 +217,33 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
 
     if (budgetCategoriesError) {
       throw budgetCategoriesError;
+    }
+
+    const giveCategoryIds = (categoryRows ?? [])
+      .filter((category) => category.category_type === "expense" && normalizeCategoryPurpose(category.purpose) === "give")
+      .map((category) => category.id);
+    const historicalBudgetIds = (historicalBudgets ?? []).map((historicalBudget) => historicalBudget.id);
+    const [{ data: historicalGiveBudgets, error: historicalGiveBudgetsError }, { data: historicalGiveTransactions, error: historicalGiveTransactionsError }] = await Promise.all([
+      historicalBudgetIds.length > 0 && giveCategoryIds.length > 0
+        ? supabase
+            .from("budget_categories")
+            .select("budget_id, category_id, budget_cents")
+            .eq("user_id", claimsData.claims.sub)
+            .in("budget_id", historicalBudgetIds)
+            .in("category_id", giveCategoryIds)
+        : Promise.resolve({ data: [], error: null }),
+      giveCategoryIds.length > 0
+        ? supabase
+            .from("transactions")
+            .select("category_id, transaction_date, amount_cents")
+            .eq("user_id", claimsData.claims.sub)
+            .in("category_id", giveCategoryIds)
+            .lt("transaction_date", monthEnd)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (historicalGiveBudgetsError || historicalGiveTransactionsError) {
+      throw historicalGiveBudgetsError ?? historicalGiveTransactionsError;
     }
 
     /*
@@ -284,6 +333,26 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
     }));
     const automaticExpectedIncome = incomeRows.reduce((sum, transaction) => sum + transaction.amount_cents / 100, 0);
 
+    const giveBudgetMonthById = new Map((historicalBudgets ?? []).map((historicalBudget) => [historicalBudget.id, historicalBudget.month]));
+    const giveProgressByMonth = new Map<string, { budgetCents: number; spentCents: number }>();
+    for (const entry of historicalGiveBudgets ?? []) {
+      const entryMonth = giveBudgetMonthById.get(entry.budget_id);
+      if (!entryMonth) continue;
+      const progress = giveProgressByMonth.get(entryMonth) ?? { budgetCents: 0, spentCents: 0 };
+      progress.budgetCents += entry.budget_cents;
+      giveProgressByMonth.set(entryMonth, progress);
+    }
+    for (const transaction of historicalGiveTransactions ?? []) {
+      if (transaction.amount_cents >= 0) continue;
+      const progress = giveProgressByMonth.get(transaction.transaction_date.slice(0, 8) + "01") ?? { budgetCents: 0, spentCents: 0 };
+      progress.spentCents += Math.abs(transaction.amount_cents);
+      giveProgressByMonth.set(transaction.transaction_date.slice(0, 8) + "01", progress);
+    }
+    const giveCommitment = toGiveCommitment(calculateGiveCommitmentCents(
+      month,
+      [...giveProgressByMonth.entries()].map(([progressMonth, progress]) => ({ month: progressMonth, ...progress })),
+    ));
+
     return {
       ...emptyLiveData(month, profile?.currency_code ?? "USD"),
       month,
@@ -307,6 +376,7 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
       expenses,
       categories,
       incomeTransactions,
+      giveCommitment,
       dataSource: "supabase",
     };
   } catch {

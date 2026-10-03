@@ -444,6 +444,8 @@ export function FinanceDashboard({
             {bucketGroups.map((bucket) => {
               const bucketSpent = bucket.expenses.reduce((total, expense) => total + expense.spent, 0);
               const bucketBudget = bucket.expenses.reduce((total, expense) => total + expense.budget, 0);
+              const isGiveBucket = bucket.purpose === "give";
+              const displayedBudget = isGiveBucket ? initialData.giveCommitment.target : bucketBudget;
 
               return (
                 <a
@@ -453,7 +455,7 @@ export function FinanceDashboard({
                 >
                   <strong>{bucket.label}</strong>
                   <span>{bucket.description}</span>
-                  <em>{formatMoney(bucketSpent, initialData.currencyCode)} / {formatMoney(bucketBudget, initialData.currencyCode)}</em>
+                  <em>{formatMoney(bucketSpent, initialData.currencyCode)} / {formatMoney(displayedBudget, initialData.currencyCode)}</em>
                 </a>
               );
             })}
@@ -480,7 +482,24 @@ export function FinanceDashboard({
                     <h2 id={`snapshot-bucket-${bucket.purpose}-heading`}>{bucket.label}</h2>
                     <p>{bucket.description}</p>
                   </div>
-                  <span>{bucket.expenses.length} {bucket.expenses.length === 1 ? "category" : "categories"}</span>
+                  <div className="snapshot-bucket-heading-meta">
+                    {bucket.purpose === "give" && initialData.giveCommitment.target > 0 ? (
+                      <div className="give-commitment" aria-label={`Giving commitment: ${formatMoney(initialData.giveCommitment.remaining, initialData.currencyCode)} remaining`}>
+                        <span>Giving commitment</span>
+                        <strong>
+                          {initialData.giveCommitment.remaining > 0
+                            ? `${formatMoney(initialData.giveCommitment.remaining, initialData.currencyCode)} remaining`
+                            : "Complete"}
+                        </strong>
+                        <small>
+                          {formatMoney(initialData.giveCommitment.carryoverFromPriorMonths, initialData.currencyCode)} carried forward
+                          {" + "}
+                          {formatMoney(initialData.giveCommitment.monthlyBudget, initialData.currencyCode)} planned this month
+                        </small>
+                      </div>
+                    ) : null}
+                    <span>{bucket.expenses.length} {bucket.expenses.length === 1 ? "category" : "categories"}</span>
+                  </div>
                 </header>
                 <div className="expense-grid">
                   {bucket.expenses.length > 0 ? bucket.expenses.map((expense) => (
