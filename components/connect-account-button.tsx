@@ -6,6 +6,7 @@ import { usePlaidLink } from "react-plaid-link";
 export function ConnectAccountButton() {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [linkAttemptId, setLinkAttemptId] = useState<string | null>(null);
+  const [reconnectItemId, setReconnectItemId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<Array<{ id: string; institution_name: string | null; status: string }>>([]);
@@ -22,22 +23,30 @@ export function ConnectAccountButton() {
       if (!publicToken) return;
       setLoading(true);
       setMessage(null);
-      const response = await fetch("/api/plaid/exchange", {
+      const isReconnect = Boolean(reconnectItemId);
+      const response = await fetch(isReconnect ? "/api/plaid/reconnect" : "/api/plaid/exchange", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          public_token: publicToken,
+          ...(isReconnect ? {} : { public_token: publicToken }),
           link_attempt_id: linkAttemptId,
         }),
       });
-      const result = await response.json() as { error?: string; connected_accounts?: number };
+      const result = await response.json() as { error?: string; connected_accounts?: number; imported_transactions?: number };
       setLoading(false);
       setLinkToken(null);
       setLinkAttemptId(null);
-      setMessage(response.ok ? `${result.connected_accounts ?? 0} account(s) connected.` : result.error ?? "Could not connect the account.");
+      setReconnectItemId(null);
+      setMessage(response.ok
+        ? isReconnect
+          ? result.imported_transactions === undefined
+            ? "Institution reconnected. Transactions will update shortly."
+            : "Institution reconnected and transaction sync started."
+          : `${result.connected_accounts ?? 0} account(s) connected.`
+        : result.error ?? (isReconnect ? "Could not reconnect the institution." : "Could not connect the account."));
       if (response.ok) void loadConnectedItems();
     },
-    onExit: () => { setLinkToken(null); setLinkAttemptId(null); setLoading(false); },
+    onExit: () => { setLinkToken(null); setLinkAttemptId(null); setReconnectItemId(null); setLoading(false); },
   });
 
   useEffect(() => {
@@ -54,6 +63,25 @@ export function ConnectAccountButton() {
       setMessage(result.error ?? "Could not start the bank connection.");
       return;
     }
+    setLinkToken(result.link_token);
+    setLinkAttemptId(result.link_attempt_id);
+  }
+
+  async function startReconnect(itemId: string) {
+    setLoading(true);
+    setMessage(null);
+    const response = await fetch("/api/plaid/reconnect-link-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item_id: itemId }),
+    });
+    const result = await response.json() as { error?: string; link_token?: string; link_attempt_id?: string };
+    if (!response.ok || !result.link_token || !result.link_attempt_id) {
+      setLoading(false);
+      setMessage(result.error ?? "Could not start the account reconnection.");
+      return;
+    }
+    setReconnectItemId(itemId);
     setLinkToken(result.link_token);
     setLinkAttemptId(result.link_attempt_id);
   }
@@ -90,7 +118,10 @@ export function ConnectAccountButton() {
           {items.map((item) => (
             <li key={item.id}>
               {item.institution_name ?? "Connected institution"} ({item.status})
-              <button type="button" onClick={() => void disconnect(item.id)} disabled={loading}>Disconnect</button>
+              {item.status === "login_required" ? (
+                <button className="reconnect-institution-button" type="button" onClick={() => void startReconnect(item.id)} disabled={loading || Boolean(linkToken)}>Reconnect</button>
+              ) : null}
+              <button className="disconnect-institution-button" type="button" onClick={() => void disconnect(item.id)} disabled={loading}>Disconnect</button>
             </li>
           ))}
         </ul>

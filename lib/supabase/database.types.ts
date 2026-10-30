@@ -243,6 +243,7 @@ export type Database = {
           expires_at: string
           id: string
           is_ready: boolean
+          plaid_item_id: string | null
           user_id: string
         }
         Insert: {
@@ -252,6 +253,7 @@ export type Database = {
           expires_at: string
           id?: string
           is_ready?: boolean
+          plaid_item_id?: string | null
           user_id: string
         }
         Update: {
@@ -261,6 +263,7 @@ export type Database = {
           expires_at?: string
           id?: string
           is_ready?: boolean
+          plaid_item_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -401,6 +404,16 @@ export type Database = {
           p_expires_at: string
           p_max_attempts?: number
           p_max_items?: number
+          p_plaid_environment: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      reserve_plaid_link_update_attempt: {
+        Args: {
+          p_expires_at: string
+          p_item_id: string
+          p_max_attempts?: number
           p_plaid_environment: string
           p_user_id: string
         }

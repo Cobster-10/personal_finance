@@ -15,7 +15,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
 
   const { month, tab } = await searchParams;
   const dashboardData = await getDashboardData(month);
-  const initialTab = tab === "categories" ? "Categories" as const : "Snapshot" as const;
+  const initialTab = tab === "categories"
+    ? "Categories" as const
+    : tab === "settings"
+      ? "Settings" as const
+      : "Snapshot" as const;
 
   return <FinanceDashboard key={`${dashboardData.month}-${initialTab}`} initialData={dashboardData} initialTab={initialTab} />;
 }

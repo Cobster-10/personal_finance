@@ -7,9 +7,8 @@ import { useRouter } from "next/navigation";
 import { CandyJarViewer } from "@/components/candy-jar-viewer";
 import { ReceiptStackMeter } from "@/components/receipt-stack-meter";
 import { CategoryPlanner } from "@/components/category-planner";
+import { SettingsPanel } from "@/components/settings-panel";
 import type { DashboardData, DashboardExpense } from "@/lib/finance/dashboard-data";
-import { SignOutButton } from "@/components/sign-out-button";
-import { ConnectAccountButton } from "@/components/connect-account-button";
 import { createClient } from "@/lib/supabase/client";
 
 type DashboardTab = "Snapshot" | "Transactions" | "Categories" | "Settings";
@@ -53,7 +52,7 @@ const navItems: NavItem[] = [
   { label: "Snapshot", icon: "/assets/nav-snapshot.svg" },
   { label: "Transactions", icon: "/assets/nav-transactions.svg", href: "/transactions" },
   { label: "Categories", icon: "/assets/nav-categories.svg" },
-  { label: "Settings", icon: "/assets/nav-settings.svg" },
+  { label: "Settings", icon: "/assets/nav-settings.svg", href: "/?tab=settings" },
 ];
 
 function formatMoney(value: number, currencyCode: string) {
@@ -369,8 +368,6 @@ export function FinanceDashboard({
               <Image className="select-chevron" src="/assets/chevron.svg" alt="" width={17} height={17} />
             </span>
           </label>
-          <ConnectAccountButton />
-          <SignOutButton />
         </div>
       </header>
 
@@ -383,7 +380,9 @@ export function FinanceDashboard({
         />
       ) : null}
 
-      {activeTab !== "Categories" ? <main className="dashboard" id="snapshot">
+      {activeTab === "Settings" ? <SettingsPanel /> : null}
+
+      {activeTab === "Snapshot" ? <main className="dashboard" id="snapshot">
         <section className="income-panel" aria-labelledby="income-heading">
           <h1 className="sr-only" id="income-heading">Income snapshot for {initialData.monthLabel}</h1>
 

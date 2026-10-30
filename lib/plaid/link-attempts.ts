@@ -15,14 +15,16 @@ export const MAX_PLAID_ITEMS_PER_USER = 5;
 export async function verifyLinkAttempt({
   userId,
   attemptId,
+  plaidItemId,
 }: {
   userId: string;
   attemptId: string;
+  plaidItemId?: string;
 }) {
   const admin = createAdminClient();
   const { data: attempt, error } = await admin
     .from("plaid_link_attempts")
-    .select("id, expires_at, consumed_at, is_ready")
+    .select("id, expires_at, consumed_at, is_ready, plaid_item_id")
     .eq("id", attemptId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -31,8 +33,11 @@ export async function verifyLinkAttempt({
   if (!attempt || !attempt.is_ready || attempt.consumed_at || Date.parse(attempt.expires_at) <= Date.now()) {
     throw new Error("This bank connection attempt has expired. Start again.");
   }
+  if (plaidItemId && attempt.plaid_item_id !== plaidItemId) {
+    throw new Error("This bank connection attempt is not valid for that institution.");
+  }
 
-  return attempt.id;
+  return attempt;
 }
 
 export async function consumeLinkAttempt(userId: string, attemptId: string) {

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { SignOutButton } from "@/components/sign-out-button";
 import { TransactionCategorySelect } from "@/components/transaction-category-select";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,7 +10,7 @@ const ledgerNavItems = [
   { label: "Snapshot", icon: "/assets/nav-snapshot.svg", href: "/" },
   { label: "Transactions", icon: "/assets/nav-transactions.svg", href: "/transactions" },
   { label: "Categories", icon: "/assets/nav-categories.svg", href: "/?tab=categories" },
-  { label: "Settings", icon: "/assets/nav-settings.svg" },
+  { label: "Settings", icon: "/assets/nav-settings.svg", href: "/?tab=settings" },
 ];
 
 function formatDate(value: string) {
@@ -103,9 +102,6 @@ export default async function TransactionsPage() {
             </div>
           ))}
         </nav>
-        <div className="ledger-actions">
-          <SignOutButton />
-        </div>
       </header>
 
       <main className="ledger-main">
