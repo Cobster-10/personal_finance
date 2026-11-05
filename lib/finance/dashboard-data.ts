@@ -219,18 +219,19 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
       throw budgetCategoriesError;
     }
 
+    const categoryIds = (categoryRows ?? []).map((category) => category.id);
     const giveCategoryIds = (categoryRows ?? [])
       .filter((category) => category.category_type === "expense" && normalizeCategoryPurpose(category.purpose) === "give")
       .map((category) => category.id);
     const historicalBudgetIds = (historicalBudgets ?? []).map((historicalBudget) => historicalBudget.id);
-    const [{ data: historicalGiveBudgets, error: historicalGiveBudgetsError }, { data: historicalGiveTransactions, error: historicalGiveTransactionsError }] = await Promise.all([
-      historicalBudgetIds.length > 0 && giveCategoryIds.length > 0
+    const [{ data: historicalCategoryBudgets, error: historicalCategoryBudgetsError }, { data: historicalGiveTransactions, error: historicalGiveTransactionsError }] = await Promise.all([
+      historicalBudgetIds.length > 0 && categoryIds.length > 0
         ? supabase
             .from("budget_categories")
             .select("budget_id, category_id, budget_cents")
             .eq("user_id", claimsData.claims.sub)
             .in("budget_id", historicalBudgetIds)
-            .in("category_id", giveCategoryIds)
+            .in("category_id", categoryIds)
         : Promise.resolve({ data: [], error: null }),
       giveCategoryIds.length > 0
         ? supabase
@@ -242,8 +243,8 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
         : Promise.resolve({ data: [], error: null }),
     ]);
 
-    if (historicalGiveBudgetsError || historicalGiveTransactionsError) {
-      throw historicalGiveBudgetsError ?? historicalGiveTransactionsError;
+    if (historicalCategoryBudgetsError || historicalGiveTransactionsError) {
+      throw historicalCategoryBudgetsError ?? historicalGiveTransactionsError;
     }
 
     /*
@@ -257,7 +258,22 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
         .filter((category) => isIgnoredCategoryPurpose(category.purpose))
         .map((category) => category.id),
     );
-    const categoryBudgets = new Map((budgetCategories ?? []).map((entry) => [entry.category_id, entry.budget_cents / 100]));
+    const categoryBudgets = new Map((budgetCategories ?? []).map((entry) => [entry.category_id, entry.budget_cents]));
+    const budgetMonthById = new Map((historicalBudgets ?? []).map((historicalBudget) => [historicalBudget.id, historicalBudget.month]));
+    const previousCategoryBudgets = new Map<string, { month: string; budgetCents: number }>();
+    for (const entry of historicalCategoryBudgets ?? []) {
+      const entryMonth = budgetMonthById.get(entry.budget_id);
+      if (!entryMonth || entryMonth >= month) continue;
+      const existing = previousCategoryBudgets.get(entry.category_id);
+      if (!existing || existing.month < entryMonth) {
+        previousCategoryBudgets.set(entry.category_id, { month: entryMonth, budgetCents: entry.budget_cents });
+      }
+    }
+    const monthlyBudgetForCategory = (categoryId: string) => {
+      const currentBudget = categoryBudgets.get(categoryId);
+      if (currentBudget !== undefined) return currentBudget / 100;
+      return (previousCategoryBudgets.get(categoryId)?.budgetCents ?? 0) / 100;
+    };
     const spentByCategory = new Map<string, number>();
     const receivedByCategory = new Map<string, number>();
     const transactionsByCategory = new Map<string, DashboardExpenseTransaction[]>();
@@ -292,14 +308,14 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
       (category) => category.category_type === "expense" && !ignoredCategoryIds.has(category.id),
     );
     const categoryBudgetTotal = expenseCategories.reduce(
-      (total, category) => total + (categoryBudgets.get(category.id) ?? 0),
+      (total, category) => total + monthlyBudgetForCategory(category.id),
       0,
     );
     const expenses = expenseCategories
       .map((category) => ({
         category: category.name,
         spent: spentByCategory.get(category.id) ?? 0,
-        budget: categoryBudgets.get(category.id) ?? 0,
+        budget: monthlyBudgetForCategory(category.id),
         transactions: transactionsByCategory.get(category.id) ?? [],
       }))
       .sort((a, b) => b.spent - a.spent);
@@ -313,7 +329,7 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
         purpose: normalizeCategoryPurpose(category.purpose),
         color: category.color,
         icon: category.icon,
-        monthlyBudget: categoryBudgets.get(category.id) ?? 0,
+        monthlyBudget: monthlyBudgetForCategory(category.id),
         spent: spentByCategory.get(category.id) ?? 0,
         received: receivedByCategory.get(category.id) ?? 0,
         budgetId: budget?.id ?? null,
@@ -333,10 +349,10 @@ export async function getDashboardData(selectedMonth?: string): Promise<Dashboar
     }));
     const automaticExpectedIncome = incomeRows.reduce((sum, transaction) => sum + transaction.amount_cents / 100, 0);
 
-    const giveBudgetMonthById = new Map((historicalBudgets ?? []).map((historicalBudget) => [historicalBudget.id, historicalBudget.month]));
     const giveProgressByMonth = new Map<string, { budgetCents: number; spentCents: number }>();
-    for (const entry of historicalGiveBudgets ?? []) {
-      const entryMonth = giveBudgetMonthById.get(entry.budget_id);
+    for (const entry of historicalCategoryBudgets ?? []) {
+      if (!giveCategoryIds.includes(entry.category_id)) continue;
+      const entryMonth = budgetMonthById.get(entry.budget_id);
       if (!entryMonth) continue;
       const progress = giveProgressByMonth.get(entryMonth) ?? { budgetCents: 0, spentCents: 0 };
       progress.budgetCents += entry.budget_cents;
